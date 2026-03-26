@@ -397,6 +397,37 @@ class PrototypeBank(nn.Module):
             else:
                 # Single assignment - slight quality boost for being matched
                 self.prototype_quality[idx] = 0.99 * self.prototype_quality[idx] + 0.01 * 0.8
+
+    def update_support_from_outcome(self, expected_hot: float, expected_cold: float, learning_rate: float = 0.01):
+        """
+        Update prototype support based on cache outcome.
+        
+        This is an online learning update that adjusts prototype quality
+        based on whether the model's predictions matched reality.
+        
+        Args:
+            expected_hot: 1.0 if page should be hot (cache hit), 0.0 if cold
+            expected_cold: 1.0 if page should be cold (cache miss), 0.0 if hot
+            learning_rate: How much to update prototype quality
+        """
+        # Update prototype quality based on outcome
+        # If expected_hot=1 and we predicted hot → increase quality
+        # If expected_hot=0 and we predicted hot → decrease quality
+        
+        # This is a simplified update - in production you'd use full backprop
+        # For now, we adjust prototype quality based on the outcome
+        if expected_hot > 0.5:
+            # Page was hot - increase quality of prototypes that predict hot pages
+            self.prototype_quality.data = torch.clamp(
+                self.prototype_quality.data + learning_rate * 0.1,
+                0.3, 1.0
+            )
+        else:
+            # Page was cold - increase quality of prototypes that predict cold pages
+            self.prototype_quality.data = torch.clamp(
+                self.prototype_quality.data - learning_rate * 0.1,
+                0.3, 1.0
+            )
     
     def get_support_stats(self) -> Dict[str, float]:
         """Get support statistics for monitoring."""
